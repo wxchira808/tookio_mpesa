@@ -1,0 +1,212 @@
+{
+ "actions": [],
+ "creation": "2024-08-23 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "basic_settings_section",
+  "consumer_key",
+  "consumer_secret",
+  "environment",
+  "is_active",
+  "column_break_5",
+  "organization_name",
+  "default_currency",
+  "callback_url",
+  "paybill_settings_section",
+  "business_shortcode",
+  "passkey",
+  "transaction_type",
+  "column_break_12",
+  "paybill_number",
+  "account_number",
+  "till_settings_section",
+  "till_number",
+  "store_number",
+  "column_break_16",
+  "use_till_number",
+  "additional_settings_section",
+  "timeout_url",
+  "result_url"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "default": "Default Mpesa Settings"
+  },
+  {
+   "fieldname": "basic_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Basic Settings"
+  },
+  {
+   "fieldname": "consumer_key",
+   "fieldtype": "Data",
+   "label": "Consumer Key",
+   "reqd": 1,
+   "description": "From Daraja Portal"
+  },
+  {
+   "fieldname": "consumer_secret",
+   "fieldtype": "Data",
+   "label": "Consumer Secret", 
+   "reqd": 1,
+   "description": "From Daraja Portal"
+  },
+  {
+   "fieldname": "environment",
+   "fieldtype": "Select",
+   "label": "Environment",
+   "options": "Sandbox\nProduction",
+   "default": "Sandbox",
+   "reqd": 1
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "organization_name",
+   "fieldtype": "Data",
+   "label": "Organization Name",
+   "description": "As registered with Safaricom"
+  },
+  {
+   "fieldname": "default_currency",
+   "fieldtype": "Select",
+   "label": "Default Currency",
+   "options": "KES\nUSD\nEUR",
+   "default": "KES"
+  },
+  {
+   "fieldname": "callback_url",
+   "fieldtype": "Data",
+   "label": "Callback URL",
+   "read_only": 1,
+   "description": "Auto-generated"
+  },
+  {
+   "fieldname": "paybill_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Paybill Settings",
+   "description": "For CustomerPayBillOnline transactions"
+  },
+  {
+   "fieldname": "business_shortcode",
+   "fieldtype": "Data",
+   "label": "Business Shortcode",
+   "reqd": 1,
+   "description": "Paybill number OR Store number (for Till)"
+  },
+  {
+   "fieldname": "passkey",
+   "fieldtype": "Password",
+   "label": "Passkey",
+   "reqd": 0,
+   "description": "Online passkey from Safaricom (NOT your portal password)"
+  },
+  {
+   "fieldname": "transaction_type",
+   "fieldtype": "Select",
+   "label": "Transaction Type",
+   "options": "CustomerPayBillOnline\nCustomerBuyGoodsOnline",
+   "default": "CustomerPayBillOnline",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paybill_number",
+   "fieldtype": "Data",
+   "label": "Paybill Number",
+   "description": "Your actual paybill number"
+  },
+  {
+   "fieldname": "account_number",
+   "fieldtype": "Data",
+   "label": "Default Account Number",
+   "description": "Optional default account for paybill"
+  },
+  {
+   "fieldname": "till_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Till Settings",
+   "description": "For CustomerBuyGoodsOnline transactions"
+  },
+  {
+   "fieldname": "till_number",
+   "fieldtype": "Data",
+   "label": "Till Number",
+   "description": "Your actual till number"
+  },
+  {
+   "fieldname": "store_number",
+   "fieldtype": "Data",
+   "label": "Store Number",
+   "description": "Store number (becomes the shortcode for Till)"
+  },
+  {
+   "fieldname": "column_break_16",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "use_till_number",
+   "fieldtype": "Check",
+   "label": "Use Till Number",
+   "description": "Check if using Till instead of Paybill"
+  },
+  {
+   "fieldname": "additional_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Settings"
+  },
+  {
+   "fieldname": "timeout_url",
+   "fieldtype": "Data",
+   "label": "Timeout URL",
+   "read_only": 1,
+   "description": "Auto-generated"
+  },
+  {
+   "fieldname": "result_url",
+   "fieldtype": "Data",
+   "label": "Result URL", 
+   "read_only": 1,
+   "description": "Auto-generated"
+  }
+ ],
+ "issingle": 1,
+ "modified": "2024-08-23 12:00:00.000000",
+ "module": "Tookio Mpesa",
+ "name": "Mpesa Settings",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

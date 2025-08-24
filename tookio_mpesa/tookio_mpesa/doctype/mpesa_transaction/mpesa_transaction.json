@@ -1,0 +1,237 @@
+{
+ "actions": [],
+ "creation": "2024-08-23 12:00:00.000000",
+ "doctype": "DocType", 
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "transaction_id",
+  "transaction_type",
+  "status",
+  "phone_number",
+  "column_break_4",
+  "amount",
+  "currency",
+  "account_reference",
+  "transaction_desc",
+  "transaction_details_section",
+  "checkout_request_id",
+  "merchant_request_id",
+  "mpesa_receipt_number",
+  "column_break_11",
+  "response_code",
+  "response_description",
+  "result_code",
+  "result_desc",
+  "callback_section",
+  "callback_data",
+  "callback_received_at",
+  "column_break_17",
+  "transaction_timestamp",
+  "timestamps_section",
+  "created_at",
+  "updated_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "MPESA-.YYYY.-.MM.-.DD.-\nSTK-.YYYY.-.MM.-.DD.-",
+   "default": "MPESA-.YYYY.-.MM.-.DD.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "transaction_id",
+   "fieldtype": "Data",
+   "label": "Transaction ID",
+   "unique": 1,
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "transaction_type",
+   "fieldtype": "Select",
+   "label": "Transaction Type",
+   "options": "STK Push\nC2B Payment\nB2C Payment",
+   "default": "STK Push",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select", 
+   "label": "Status",
+   "options": "Pending\nSuccess\nFailed\nTimeout\nCancelled",
+   "default": "Pending",
+   "reqd": 1,
+   "in_list_view": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "options": "currency",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "KES"
+  },
+  {
+   "fieldname": "account_reference",
+   "fieldtype": "Data",
+   "label": "Account Reference",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "transaction_desc",
+   "fieldtype": "Small Text",
+   "label": "Transaction Description"
+  },
+  {
+   "fieldname": "transaction_details_section",
+   "fieldtype": "Section Break",
+   "label": "Transaction Details"
+  },
+  {
+   "fieldname": "checkout_request_id",
+   "fieldtype": "Data",
+   "label": "Checkout Request ID",
+   "unique": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "merchant_request_id",
+   "fieldtype": "Data",
+   "label": "Merchant Request ID"
+  },
+  {
+   "fieldname": "mpesa_receipt_number",
+   "fieldtype": "Data",
+   "label": "Mpesa Receipt Number",
+   "search_index": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "response_code",
+   "fieldtype": "Data",
+   "label": "Response Code"
+  },
+  {
+   "fieldname": "response_description",
+   "fieldtype": "Small Text",
+   "label": "Response Description"
+  },
+  {
+   "fieldname": "result_code",
+   "fieldtype": "Data",
+   "label": "Result Code",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "result_desc",
+   "fieldtype": "Small Text",
+   "label": "Result Description"
+  },
+  {
+   "fieldname": "callback_section",
+   "fieldtype": "Section Break",
+   "label": "Callback Information",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "callback_data",
+   "fieldtype": "Long Text",
+   "label": "Callback Data (JSON)"
+  },
+  {
+   "fieldname": "callback_received_at",
+   "fieldtype": "Datetime",
+   "label": "Callback Received At"
+  },
+  {
+   "fieldname": "column_break_17",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transaction_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Transaction Timestamp",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "timestamps_section",
+   "fieldtype": "Section Break",
+   "label": "System Timestamps",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "label": "Created At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "updated_at",
+   "fieldtype": "Datetime",
+   "label": "Updated At",
+   "read_only": 1
+  }
+ ],
+ "modified": "2024-08-23 12:00:00.000000",
+ "module": "Tookio Mpesa", 
+ "name": "Mpesa Transaction",
+ "naming_rule": "By \"Naming Series\" field",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
