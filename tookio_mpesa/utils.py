@@ -23,8 +23,8 @@ def test_with_your_sandbox_credentials():
         test_consumer_key = test_consumer_key.strip()
         test_consumer_secret = test_consumer_secret.strip()
 
-        print(f"DEBUG(test_with_your_sandbox_credentials): key={repr(test_consumer_key)} len={len(test_consumer_key)}")
-        print(f"DEBUG(test_with_your_sandbox_credentials): secret repr len={len(test_consumer_secret)}")
+        frappe.logger().info(f"DEBUG(test_with_your_sandbox_credentials): key={repr(test_consumer_key)} len={len(test_consumer_key)}")
+        frappe.logger().info(f"DEBUG(test_with_your_sandbox_credentials): secret repr len={len(test_consumer_secret)}")
 
         # Use requests' HTTPBasicAuth which handles header encoding reliably
         response = requests.get(url, auth=HTTPBasicAuth(test_consumer_key, test_consumer_secret), timeout=10)
@@ -55,7 +55,7 @@ def test_with_known_sandbox_credentials():
         url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
         test_consumer_key = test_consumer_key.strip()
         test_consumer_secret = test_consumer_secret.strip()
-        print(f"DEBUG(test_with_known_sandbox_credentials): key={repr(test_consumer_key)} len={len(test_consumer_key)}")
+        frappe.logger().info(f"DEBUG(test_with_known_sandbox_credentials): key={repr(test_consumer_key)} len={len(test_consumer_key)}")
         response = requests.get(url, auth=HTTPBasicAuth(test_consumer_key, test_consumer_secret), timeout=10)
 
         return {
@@ -97,8 +97,8 @@ def test_mpesa_credentials():
                 # Strip stored credentials to avoid hidden newlines/spaces
                 ck = settings.consumer_key.strip() if settings.consumer_key else ""
                 cs = settings.consumer_secret.strip() if settings.consumer_secret else ""
-                print(f"DEBUG(test_mpesa_credentials): ck_repr={repr(ck)} len={len(ck)}")
-                print(f"DEBUG(test_mpesa_credentials): cs_len={len(cs)}")
+                frappe.logger().info(f"DEBUG(test_mpesa_credentials): ck_repr={repr(ck)} len={len(ck)}")
+                frappe.logger().info(f"DEBUG(test_mpesa_credentials): cs_len={len(cs)}")
 
                 response = requests.get(url, auth=HTTPBasicAuth(ck, cs), timeout=10)
                 result["auth_test"] = {
@@ -129,11 +129,11 @@ def get_access_token():
         frappe.throw("Consumer Key or Consumer Secret is not set in M-Pesa Settings")
     
     # Debug logging and strip credentials to avoid hidden whitespace/newlines
-    print(f"DEBUG: Environment: {settings.environment}")
+    frappe.logger().info(f"DEBUG: Environment: {settings.environment}")
     ck = settings.consumer_key.strip()
     cs = settings.consumer_secret.strip()
-    print(f"DEBUG: Consumer Key repr: {repr(ck)} len={len(ck)}")
-    print(f"DEBUG: Consumer Secret len={len(cs)} (not printing secret value)")
+    frappe.logger().info(f"DEBUG: Consumer Key repr: {repr(ck)} len={len(ck)}")
+    frappe.logger().info(f"DEBUG: Consumer Secret len={len(cs)} (not printing secret value)")
 
     # Determine environment
     if settings.environment == "Sandbox":
@@ -142,11 +142,11 @@ def get_access_token():
         url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
 
     try:
-        print(f"DEBUG: Making request to: {url}")
+        frappe.logger().info(f"DEBUG: Making request to: {url}")
         response = requests.get(url, auth=HTTPBasicAuth(ck, cs), timeout=10)
-        print(f"DEBUG: Response status: {response.status_code}")
-        print(f"DEBUG: Response headers: {dict(response.headers)}")
-        print(f"DEBUG: Response text (first 1000 chars): {response.text[:1000]}")
+        frappe.logger().info(f"DEBUG: Response status: {response.status_code}")
+        frappe.logger().info(f"DEBUG: Response headers: {dict(response.headers)}")
+        frappe.logger().info(f"DEBUG: Response text (first 1000 chars): {response.text[:1000]}")
 
         # Raise for HTTP errors
         response.raise_for_status()
@@ -276,9 +276,9 @@ def simulate_c2b_till_payment(phone_number, amount, bill_ref_number=None):
     access_token = get_access_token()
     # Debug: show token prefix/length and time fetched (do not print full token)
     try:
-        print(f"DEBUG: Fetched access token prefix={access_token[:8]}... len={len(access_token)} at {frappe.utils.now()}")
+        frappe.logger().info(f"DEBUG: Fetched access token prefix={access_token[:8]}... len={len(access_token)} at {frappe.utils.now()}")
     except Exception:
-        print("DEBUG: Fetched access token (could not print details)")
+        frappe.logger().info("DEBUG: Fetched access token (could not print details)")
     if settings.environment == "Sandbox":
         url = "https://sandbox.safaricom.co.ke/mpesa/c2b/v1/simulate"
     else:
@@ -469,8 +469,8 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
     # Debug: Log the payload being sent (without sensitive password)
     debug_payload = payload.copy()
     debug_payload['Password'] = f"{debug_payload['Password'][:10]}..." if debug_payload.get('Password') else "None"
-    print(f"DEBUG: STK Payload: {json.dumps(debug_payload, indent=2)}")
-    print(f"DEBUG: STK URL: {url}")
+    frappe.logger().info(f"DEBUG: STK Payload: {json.dumps(debug_payload, indent=2)}")
+    frappe.logger().info(f"DEBUG: STK URL: {url}")
 
     try:
         response = requests.post(url, json=payload, headers=headers)
