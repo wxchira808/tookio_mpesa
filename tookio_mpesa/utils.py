@@ -326,6 +326,7 @@ def format_phone_number(phone):
 def stk_callback():
     """Handle STK Push callback from Safaricom"""
     try:
+        frappe.set_user("Administrator")
         callback_data = json.loads(frappe.request.data)
         
         frappe.logger().info(f"STK Callback received: {json.dumps(callback_data, indent=2)}")
@@ -387,7 +388,6 @@ def stk_callback():
             transaction.status = "Failed"
             frappe.logger().info(f"Payment failed for transaction {transaction.name}: {result_desc}")
         
-        frappe.set_user("Administrator")
         transaction.flags.ignore_permissions = True
         transaction.save()
         frappe.db.commit()
