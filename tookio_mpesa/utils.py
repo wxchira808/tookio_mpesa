@@ -614,15 +614,24 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
         if not callback_url.startswith('https://'):
             frappe.throw("Production M-Pesa requires HTTPS callback URL. Please configure your site with HTTPS.")
     
+    # Determine TransactionType based on environment (matching Navari's implementation)
+    if settings.environment == "Sandbox":
+        transaction_type = "CustomerPayBillOnline"
+        party_b = business_short_code
+    else:
+        transaction_type = "CustomerBuyGoodsOnline"
+        # For Buy Goods (Till), PartyB should be the Till Number
+        party_b = settings.till_number if settings.till_number else business_short_code
+    
     payload = {
         "BusinessShortCode": business_short_code,
         "Password": password,
         "Timestamp": timestamp,
-        "TransactionType": "CustomerPayBillOnline",  # Use PayBill for sandbox testing
+        "TransactionType": transaction_type,
         "Amount": int(float(amount)),
-        "PartyA": format_phone_number(phone_number),
-        "PartyB": business_short_code,
-        "PhoneNumber": format_phone_number(phone_number),
+        "PartyA": int(format_phone_number(phone_number).replace('+', '')),
+        "PartyB": party_b,
+        "PhoneNumber": int(format_phone_number(phone_number).replace('+', '')),
         "CallBackURL": callback_url,
         "AccountReference": account_reference,
         "TransactionDesc": transaction_desc
