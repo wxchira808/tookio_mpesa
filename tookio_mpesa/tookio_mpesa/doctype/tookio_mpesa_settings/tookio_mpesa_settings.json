@@ -4,65 +4,58 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "title",
   "basic_settings_section",
   "consumer_key",
   "consumer_secret",
+  "passkey",
+  "column_break_5",
   "environment",
   "is_active",
-  "column_break_5",
-  "organization_name",
-  "default_currency",
-  "callback_url",
-  "paybill_settings_section",
-  "business_shortcode",
-  "passkey",
-  "transaction_type",
-  "column_break_12",
-  "paybill_number",
-  "account_number",
-  "till_settings_section",
-  "till_number",
+  "numbers_section",
   "store_number",
-  "column_break_16",
-  "use_till_number",
-  "additional_settings_section",
+  "till_number",
+  "column_break_12",
+  "head_office_shortcode",
+  "urls_section",
+  "callback_url",
   "timeout_url",
   "result_url"
  ],
  "fields": [
   {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "label": "Title",
-   "reqd": 1,
-   "default": "Default Mpesa Settings"
-  },
-  {
    "fieldname": "basic_settings_section",
    "fieldtype": "Section Break",
-   "label": "Basic Settings"
+   "label": "API Credentials"
   },
   {
    "fieldname": "consumer_key",
    "fieldtype": "Data",
    "label": "Consumer Key",
-   "reqd": 1,
-   "description": "From Daraja Portal"
+   "reqd": 1
   },
   {
    "fieldname": "consumer_secret",
-   "fieldtype": "Data",
+   "fieldtype": "Password",
    "label": "Consumer Secret",
+   "reqd": 1
+  },
+  {
+   "fieldname": "passkey",
+   "fieldtype": "Password",
+   "label": "Passkey",
    "reqd": 1,
-   "description": "From Daraja Portal"
+   "description": "Lipa Na M-Pesa Online Passkey from Daraja"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "environment",
    "fieldtype": "Select",
    "label": "Environment",
    "options": "Sandbox\nProduction",
-   "default": "Sandbox",
+   "default": "Production",
    "reqd": 1
   },
   {
@@ -72,119 +65,55 @@
    "default": 1
   },
   {
-   "fieldname": "column_break_5",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "organization_name",
-   "fieldtype": "Data",
-   "label": "Organization Name",
-   "description": "As registered with Safaricom"
-  },
-  {
-   "fieldname": "default_currency",
-   "fieldtype": "Select",
-   "label": "Default Currency",
-   "options": "KES\nUSD\nEUR",
-   "default": "KES"
-  },
-  {
-   "fieldname": "callback_url",
-   "fieldtype": "Data",
-   "label": "Callback URL",
-   "read_only": 1,
-   "description": "Auto-generated"
-  },
-  {
-   "fieldname": "paybill_settings_section",
+   "fieldname": "numbers_section",
    "fieldtype": "Section Break",
-   "label": "Paybill Settings",
-   "description": "For CustomerPayBillOnline transactions"
+   "label": "Business Numbers"
   },
   {
-   "fieldname": "business_shortcode",
+   "fieldname": "store_number",
    "fieldtype": "Data",
-   "label": "Business Shortcode",
+   "label": "Store Number",
    "reqd": 1,
-   "description": "Paybill number OR Store number (for Till)"
+   "description": "Use this as Business Shortcode for STK Push"
   },
   {
-   "fieldname": "passkey",
-   "fieldtype": "Password",
-   "label": "Passkey",
-   "reqd": 0,
-   "description": "Online passkey from Safaricom (NOT your portal password)"
-  },
-  {
-   "fieldname": "transaction_type",
-   "fieldtype": "Select",
-   "label": "Transaction Type",
-   "options": "CustomerPayBillOnline\nCustomerBuyGoodsOnline",
-   "default": "CustomerPayBillOnline",
-   "reqd": 1
+   "fieldname": "till_number",
+   "fieldtype": "Data",
+   "label": "Till Number",
+   "description": "Your Till Number (reference only)"
   },
   {
    "fieldname": "column_break_12",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "paybill_number",
+   "fieldname": "head_office_shortcode",
    "fieldtype": "Data",
-   "label": "Paybill Number",
-   "description": "Your actual paybill number"
+   "label": "Head Office Shortcode",
+   "description": "Your Head Office/Short Code"
   },
   {
-   "fieldname": "account_number",
-   "fieldtype": "Data",
-   "label": "Default Account Number",
-   "description": "Optional default account for paybill"
-  },
-  {
-   "fieldname": "till_settings_section",
+   "fieldname": "urls_section",
    "fieldtype": "Section Break",
-   "label": "Till Settings",
-   "description": "For CustomerBuyGoodsOnline transactions"
+   "label": "Callback URLs"
   },
   {
-   "fieldname": "till_number",
+   "fieldname": "callback_url",
    "fieldtype": "Data",
-   "label": "Till Number",
-   "description": "Your actual till number"
-  },
-  {
-   "fieldname": "store_number",
-   "fieldtype": "Data",
-   "label": "Store Number",
-   "description": "Store number (becomes the shortcode for Till)"
-  },
-  {
-   "fieldname": "column_break_16",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "use_till_number",
-   "fieldtype": "Check",
-   "label": "Use Till Number",
-   "description": "Check if using Till instead of Paybill"
-  },
-  {
-   "fieldname": "additional_settings_section",
-   "fieldtype": "Section Break",
-   "label": "Additional Settings"
+   "label": "Callback URL",
+   "read_only": 1
   },
   {
    "fieldname": "timeout_url",
    "fieldtype": "Data",
    "label": "Timeout URL",
-   "read_only": 1,
-   "description": "Auto-generated"
+   "read_only": 1
   },
   {
    "fieldname": "result_url",
    "fieldtype": "Data",
    "label": "Result URL",
-   "read_only": 1,
-   "description": "Auto-generated"
+   "read_only": 1
   }
  ],
  "issingle": 1,

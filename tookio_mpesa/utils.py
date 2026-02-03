@@ -11,7 +11,74 @@ def get_mpesa_settings():
     return frappe.get_single("Tookio Mpesa Settings")
 
 @frappe.whitelist()
-def test_with_your_sandbox_credentials():
+def validate_mpesa_production_settings():
+    """Validate M-Pesa production settings before going live"""
+    settings = get_mpesa_settings()
+    
+    issues = []
+    warnings = []
+    
+    # Check environment
+    if settings.environment != "Production":
+        warnings.append(f"Currently in {settings.environment} mode")
+    
+    # Check credentials
+    if not settings.consumer_key:
+        issues.append("Consumer Key is missing")
+    if not settings.consumer_secret:
+        issues.append("Consumer Secret is missing")
+    
+    # Check store number
+    if not settings.store_number:
+        issues.append("Store Number is missing (required for STK Push)")
+    
+    # Check passkey
+    passkey = settings.get_password('passkey') if hasattr(settings, 'passkey') else None
+    if not passkey:
+        issues.append("Passkey is missing (required for STK Push)")
+    else:
+        # Passkey should be a long string
+        if len(passkey) < 20:
+            warnings.append(f"Passkey seems too short (length: {len(passkey)}). Expected 40+ characters")
+    
+    # Check callback URL
+    callback_url = frappe.utils.get_url("/api/method/tookio_mpesa.utils.stk_callback")
+    if not callback_url.startswith('https://'):
+        issues.append(f"Callback URL must be HTTPS for production: {callback_url}")
+    
+    # Test credentials if no critical issues
+    credential_test = None
+    if not issues:
+        try:
+            token = get_access_token()
+            credential_test = {
+                "status": "success",
+                "message": "✅ Successfully obtained access token",
+                "token_preview": f"{token[:10]}..." if token else "None"
+            }
+        except Exception as e:
+            credential_test = {
+                "status": "error",
+                "message": f"❌ Failed to get access token: {str(e)}"
+            }
+    
+    return {
+        "environment": settings.environment,
+        "is_active": settings.is_active,
+        "issues": issues,
+        "warnings": warnings,
+        "settings_summary": {
+            "consumer_key": f"{settings.consumer_key[:10]}..." if settings.consumer_key else "Not set",
+            "store_number": settings.store_number or "Not set",
+            "till_number": settings.till_number or "Not set",
+            "has_passkey": bool(passkey),
+            "callback_url": callback_url
+        },
+        "credential_test": credential_test,
+        "ready_for_production": len(issues) == 0
+    }
+
+def get_access_token():
     """Test with your actual sandbox credentials"""
     try:
         # Your actual sandbox credentials
@@ -114,6 +181,69 @@ def test_mpesa_credentials():
                 }
 
         return result
+
+    except Exception as e:
+        return {"error": str(e)}
+
+@frappe.whitelist()
+def test_with_your_sandbox_credentials():
+    """Test with your actual sandbox credentials"""
+    try:
+        # Your actual sandbox credentials
+        test_consumer_key = "GNArOqtfcHL31wtVrNBOCZ0eLEstvzWtOBgLzGvhpQbYAFne"
+        test_consumer_secret = "O9TfuV3IKVbJLTtlK9qm0GWjjW8HsA8bcFXktd4BGnW9ai8s1S4HrrAxC5mZinZx"
+
+        url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+        # Strip any accidental whitespace / newlines
+        test_consumer_key = test_consumer_key.strip()
+        test_consumer_secret = test_consumer_secret.strip()
+
+        frappe.logger().info(f"DEBUG(test_with_your_sandbox_credentials): key={repr(test_consumer_key)} len={len(test_consumer_key)}")
+        frappe.logger().info(f"DEBUG(test_with_your_sandbox_credentials): secret repr len={len(test_consumer_secret)}")
+
+        # Use requests' HTTPBasicAuth which handles header encoding reliably
+        response = requests.get(url, auth=HTTPBasicAuth(test_consumer_key, test_consumer_secret), timeout=10)
+
+        return {
+            "your_credentials": {
+                "consumer_key": test_consumer_key,
+                "consumer_secret": test_consumer_secret
+            },
+            "response": {
+                "status_code": response.status_code,
+                "response_text": response.text,
+                "success": response.status_code == 200
+            }
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+@frappe.whitelist()
+def test_with_known_sandbox_credentials():
+    """Test with known working sandbox credentials"""
+    try:
+        # These are the standard Safaricom sandbox test credentials
+        test_consumer_key = "GNArOqtfcHcX9M7rKQ1lGGKzH3V4y9Gv"
+        test_consumer_secret = "AqZqJSlDhxHhgbgg"
+
+        url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+        test_consumer_key = test_consumer_key.strip()
+        test_consumer_secret = test_consumer_secret.strip()
+        frappe.logger().info(f"DEBUG(test_with_known_sandbox_credentials): key={repr(test_consumer_key)} len={len(test_consumer_key)}")
+        response = requests.get(url, auth=HTTPBasicAuth(test_consumer_key, test_consumer_secret), timeout=10)
+
+        return {
+            "test_credentials": {
+                "consumer_key": test_consumer_key,
+                "consumer_secret": test_consumer_secret
+            },
+            "response": {
+                "status_code": response.status_code,
+                "response_text": response.text,
+                "success": response.status_code == 200
+            }
+        }
 
     except Exception as e:
         return {"error": str(e)}
@@ -345,7 +475,7 @@ def query_transaction_status(checkout_request_id):
         passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
     else:
         url = "https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query"
-        business_short_code = settings.business_shortcode
+        business_short_code = settings.store_number
         passkey = settings.get_password('passkey') if hasattr(settings, 'passkey') else ""
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -435,8 +565,16 @@ def update_pending_transactions():
 def initiate_stk_push_for_till(phone_number, amount, account_reference, transaction_desc):
     """Initiate STK Push for a Till Number (Buy Goods)."""
     settings = get_mpesa_settings()
-    if not settings.till_number:
-        frappe.throw("Till number is not set in Tookio Mpesa Settings")
+    
+    # Validate required settings
+    if not settings.store_number:
+        frappe.throw("Store Number is not set in Tookio Mpesa Settings")
+    
+    passkey = settings.get_password('passkey') if hasattr(settings, 'passkey') else None
+    if not passkey:
+        frappe.throw("Passkey is required for STK Push. Please set it in Tookio Mpesa Settings")
+    
+    frappe.logger().info(f"🔧 STK Push - Store Number: {settings.store_number}, Environment: {settings.environment}")
 
     access_token = get_access_token()
     
@@ -447,8 +585,9 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
         passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
     else:
         url = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-        business_short_code = settings.till_number
-        passkey = settings.get_password('passkey') if hasattr(settings, 'passkey') else ""
+        # For production, use store_number for STK Push
+        business_short_code = settings.store_number
+        passkey = settings.get_password('passkey')
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     # Use the standard password format: BusinessShortCode + Passkey + Timestamp
@@ -492,7 +631,33 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
     frappe.logger().info(f"DEBUG: STK URL: {url}")
 
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        frappe.logger().info(f"📡 M-Pesa Response Status: {response.status_code}")
+        frappe.logger().info(f"📡 M-Pesa Response: {response.text[:500]}")
+        
+        # Handle 500 Internal Server Error
+        if response.status_code == 500:
+            error_msg = f"M-Pesa API returned 500 Internal Server Error. This usually indicates:\n"
+            error_msg += f"1. Invalid Business Shortcode for your credentials\n"
+            error_msg += f"2. Invalid Passkey\n"
+            error_msg += f"3. Shortcode not registered for STK Push\n\n"
+            error_msg += f"Current Settings:\n"
+            error_msg += f"- Environment: {settings.environment}\n"
+            error_msg += f"- Business Shortcode: {business_short_code}\n"
+            error_msg += f"- Callback URL: {callback_url}\n\n"
+            error_msg += f"Response: {response.text}\n\n"
+            error_msg += f"Please verify:\n"
+            error_msg += f"1. Your Business Shortcode matches your Daraja app\n"
+            error_msg += f"2. Your Passkey is correct (get from Daraja portal)\n"
+            error_msg += f"3. Your shortcode is registered for Lipa Na M-Pesa Online (STK Push)"
+            
+            frappe.log_error("M-Pesa 500 Error - Configuration Issue", error_msg)
+            frappe.throw(
+                "M-Pesa payment failed due to configuration error. "
+                "Please check Error Log for details. Common issues: Invalid shortcode, "
+                "invalid passkey, or shortcode not registered for STK Push."
+            )
         
         # Handle specific HTTP error codes
         if response.status_code == 404:
