@@ -343,7 +343,7 @@ def stk_callback():
             frappe.log_error(f"Transaction not found for CheckoutRequestID: {checkout_request_id}", "STK Callback Error")
             return {"ResultCode": 1, "ResultDesc": "Transaction not found"}
         
-        transaction = frappe.get_doc("Mpesa Transaction", {"checkout_request_id": checkout_request_id})
+        transaction = frappe.get_doc("Mpesa Transaction", {"checkout_request_id": checkout_request_id}, ignore_permissions=True)
         
         frappe.logger().info(f"Found transaction: {transaction.name}")
         
