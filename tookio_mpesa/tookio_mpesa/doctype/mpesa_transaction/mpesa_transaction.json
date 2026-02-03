@@ -145,6 +145,11 @@
    "label": "Response Description"
   },
   {
+   "fieldname": "customer_message",
+   "fieldtype": "Small Text",
+   "label": "Customer Message"
+  },
+  {
    "fieldname": "result_code",
    "fieldtype": "Data",
    "label": "Result Code",

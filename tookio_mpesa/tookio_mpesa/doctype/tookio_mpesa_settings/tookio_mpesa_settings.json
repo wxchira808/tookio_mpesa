@@ -53,7 +53,7 @@
   {
    "fieldname": "consumer_secret",
    "fieldtype": "Data",
-   "label": "Consumer Secret", 
+   "label": "Consumer Secret",
    "reqd": 1,
    "description": "From Daraja Portal"
   },
@@ -182,7 +182,7 @@
   {
    "fieldname": "result_url",
    "fieldtype": "Data",
-   "label": "Result URL", 
+   "label": "Result URL",
    "read_only": 1,
    "description": "Auto-generated"
   }
@@ -190,7 +190,7 @@
  "issingle": 1,
  "modified": "2024-08-23 12:00:00.000000",
  "module": "Tookio Mpesa",
- "name": "Mpesa Settings",
+ "name": "Tookio Mpesa Settings",
  "permissions": [
   {
    "create": 1,

@@ -1,7 +1,7 @@
 import frappe
 from frappe.model.document import Document
 
-class MpesaSettings(Document):
+class TookioMpesaSettings(Document):
     def validate(self):
         # Auto-generate callback URLs
         base_url = frappe.utils.get_url()

@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestMpesaSettings(FrappeTestCase):
+class TestTookioMpesaSettings(FrappeTestCase):
 	pass

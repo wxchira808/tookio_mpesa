@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 def get_mpesa_settings():
-    return frappe.get_single("Mpesa Settings")
+    return frappe.get_single("Tookio Mpesa Settings")
 
 @frappe.whitelist()
 def test_with_your_sandbox_credentials():
@@ -227,6 +227,25 @@ def stk_callback():
                     # Convert M-Pesa date format to datetime
                     if value:
                         transaction.transaction_timestamp = datetime.strptime(str(value), "%Y%m%d%H%M%S")
+            
+            # Check if this is a subscription payment and process upgrade
+            if transaction.account_reference and "|" in transaction.account_reference:
+                try:
+                    parts = transaction.account_reference.split("|")
+                    if len(parts) == 2:
+                        user_subscription = parts[0]
+                        new_subscription = parts[1]
+                        
+                        # Import the subscription processing function
+                        from tookio_shop.api import process_subscription_upgrade
+                        
+                        # Process the subscription upgrade
+                        frappe.logger().info(f"🎯 Processing subscription upgrade for {user_subscription} to {new_subscription}")
+                        process_subscription_upgrade(user_subscription, new_subscription, transaction.name)
+                        frappe.logger().info(f"✅ Subscription upgrade processed successfully")
+                except Exception as sub_error:
+                    frappe.log_error(f"Failed to process subscription upgrade: {str(sub_error)}", "Subscription Upgrade Error")
+                    # Don't fail the callback, just log the error
         else:
             transaction.status = "Failed"
         
@@ -272,7 +291,7 @@ def simulate_c2b_till_payment(phone_number, amount, bill_ref_number=None):
     """Simulate a C2B BuyGoods payment to a Till number (no passkey required)"""
     settings = get_mpesa_settings()
     if not settings.till_number:
-        frappe.throw("Till number is not set in Mpesa Settings")
+        frappe.throw("Till number is not set in Tookio Mpesa Settings")
     access_token = get_access_token()
     # Debug: show token prefix/length and time fetched (do not print full token)
     try:
@@ -307,7 +326,7 @@ def test_till_payment(phone_number, amount=1):
     """Test function for Till number payment: uses C2B simulation for BuyGoods (no passkey required)"""
     settings = get_mpesa_settings()
     if not settings.till_number:
-        frappe.throw("Till number is not set in Mpesa Settings")
+        frappe.throw("Till number is not set in Tookio Mpesa Settings")
     return simulate_c2b_till_payment(
         phone_number=phone_number,
         amount=amount,
@@ -417,7 +436,7 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
     """Initiate STK Push for a Till Number (Buy Goods)."""
     settings = get_mpesa_settings()
     if not settings.till_number:
-        frappe.throw("Till number is not set in Mpesa Settings")
+        frappe.throw("Till number is not set in Tookio Mpesa Settings")
 
     access_token = get_access_token()
     
