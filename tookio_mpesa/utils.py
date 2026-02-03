@@ -329,6 +329,8 @@ def stk_callback():
         # Get the callback data
         callback_data = json.loads(frappe.request.data)
         
+        frappe.logger().info(f"📞 STK Callback received: {json.dumps(callback_data, indent=2)}")
+        
         # Extract STK callback info
         stk_callback = callback_data.get("Body", {}).get("stkCallback", {})
         merchant_request_id = stk_callback.get("MerchantRequestID")
@@ -336,23 +338,28 @@ def stk_callback():
         result_code = stk_callback.get("ResultCode")
         result_desc = stk_callback.get("ResultDesc")
         
-        # Find the transaction
-        transaction = frappe.get_doc("Mpesa Transaction", {
-            "checkout_request_id": checkout_request_id
-        })
+        frappe.logger().info(f"🔍 Looking for transaction with CheckoutRequestID: {checkout_request_id}")
         
-        if not transaction:
-            frappe.log_error(f"Transaction not found for CheckoutRequestID: {checkout_request_id}")
+        # Find the transaction using frappe.db.exists first
+        if not frappe.db.exists("Mpesa Transaction", {"checkout_request_id": checkout_request_id}):
+            frappe.log_error(f"Transaction not found for CheckoutRequestID: {checkout_request_id}", "STK Callback Error")
             return {"ResultCode": 1, "ResultDesc": "Transaction not found"}
         
+        # Get the transaction
+        transaction = frappe.get_doc("Mpesa Transaction", {"checkout_request_id": checkout_request_id})
+        
+        frappe.logger().info(f"✅ Found transaction: {transaction.name}")
+        
         # Update transaction based on result
-        transaction.result_code = result_code
+        transaction.result_code = str(result_code)
         transaction.result_desc = result_desc
         transaction.callback_received_at = frappe.utils.now()
         transaction.callback_data = json.dumps(callback_data)
         
-        if result_code == 0:  # Success
+        if int(result_code) == 0:  # Success
             transaction.status = "Success"
+            
+            frappe.logger().info(f"💰 Payment successful for transaction {transaction.name}")
             
             # Extract callback metadata
             callback_metadata = stk_callback.get("CallbackMetadata", {}).get("Item", [])
@@ -362,6 +369,7 @@ def stk_callback():
                 
                 if name == "MpesaReceiptNumber":
                     transaction.mpesa_receipt_number = value
+                    frappe.logger().info(f"📋 Receipt Number: {value}")
                 elif name == "TransactionDate":
                     # Convert M-Pesa date format to datetime
                     if value:
@@ -375,11 +383,12 @@ def stk_callback():
                         user_subscription = parts[0]
                         new_subscription = parts[1]
                         
+                        frappe.logger().info(f"🎯 Processing subscription upgrade for {user_subscription} to {new_subscription}")
+                        
                         # Import the subscription processing function
                         from tookio_shop.api import process_subscription_upgrade
                         
                         # Process the subscription upgrade
-                        frappe.logger().info(f"🎯 Processing subscription upgrade for {user_subscription} to {new_subscription}")
                         process_subscription_upgrade(user_subscription, new_subscription, transaction.name)
                         frappe.logger().info(f"✅ Subscription upgrade processed successfully")
                 except Exception as sub_error:
@@ -387,15 +396,20 @@ def stk_callback():
                     # Don't fail the callback, just log the error
         else:
             transaction.status = "Failed"
+            frappe.logger().info(f"❌ Payment failed for transaction {transaction.name}: {result_desc}")
         
-        transaction.save()
+        # Save and commit
+        transaction.save(ignore_permissions=True)
         frappe.db.commit()
+        
+        frappe.logger().info(f"💾 Transaction {transaction.name} updated to status: {transaction.status}")
         
         # Return success response to Safaricom
         return {"ResultCode": 0, "ResultDesc": "Success"}
         
     except Exception as e:
-        frappe.log_error(f"STK Callback error: {str(e)}")
+        frappe.logger().error(f"❌ STK Callback error: {str(e)}")
+        frappe.log_error(f"STK Callback error: {str(e)}\n{frappe.get_traceback()}", "STK Callback Error")
         return {"ResultCode": 1, "ResultDesc": "Internal server error"}
 
 @frappe.whitelist(allow_guest=True)
