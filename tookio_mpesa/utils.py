@@ -22,10 +22,13 @@ def validate_mpesa_production_settings():
     if settings.environment != "Production":
         warnings.append(f"Currently in {settings.environment} mode")
     
+    # Get consumer_secret from Password field
+    consumer_secret = settings.get_password('consumer_secret') if hasattr(settings, 'consumer_secret') else None
+    
     # Check credentials
     if not settings.consumer_key:
         issues.append("Consumer Key is missing")
-    if not settings.consumer_secret:
+    if not consumer_secret:
         issues.append("Consumer Secret is missing")
     
     # Check store number
@@ -147,23 +150,26 @@ def test_mpesa_credentials():
     try:
         settings = get_mpesa_settings()
 
+        # Get consumer_secret from Password field
+        consumer_secret = settings.get_password('consumer_secret') if hasattr(settings, 'consumer_secret') else None
+        
         result = {
             "is_active": settings.is_active,
             "environment": settings.environment,
             "has_consumer_key": bool(settings.consumer_key),
-            "has_consumer_secret": bool(settings.consumer_secret),
+            "has_consumer_secret": bool(consumer_secret),
             "has_till_number": bool(settings.till_number),
             "consumer_key_preview": settings.consumer_key[:10] + "..." if settings.consumer_key else "Not set",
-            "consumer_secret_preview": settings.consumer_secret[:10] + "..." if settings.consumer_secret else "Not set"
+            "consumer_secret_preview": consumer_secret[:10] + "..." if consumer_secret else "Not set"
         }
 
         # Try to get access token
-        if settings.is_active and settings.consumer_key and settings.consumer_secret:
+        if settings.is_active and settings.consumer_key and consumer_secret:
             try:
                 url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
                 # Strip stored credentials to avoid hidden newlines/spaces
                 ck = settings.consumer_key.strip() if settings.consumer_key else ""
-                cs = settings.consumer_secret.strip() if settings.consumer_secret else ""
+                cs = consumer_secret.strip() if consumer_secret else ""
                 frappe.logger().info(f"DEBUG(test_mpesa_credentials): ck_repr={repr(ck)} len={len(ck)}")
                 frappe.logger().info(f"DEBUG(test_mpesa_credentials): cs_len={len(cs)}")
 
@@ -255,13 +261,16 @@ def get_access_token():
     if not settings.is_active:
         frappe.throw("M-Pesa integration is disabled")
     
-    if not settings.consumer_key or not settings.consumer_secret:
+    # Get consumer_secret from Password field
+    consumer_secret = settings.get_password('consumer_secret') if hasattr(settings, 'consumer_secret') else None
+    
+    if not settings.consumer_key or not consumer_secret:
         frappe.throw("Consumer Key or Consumer Secret is not set in M-Pesa Settings")
     
     # Debug logging and strip credentials to avoid hidden whitespace/newlines
     frappe.logger().info(f"DEBUG: Environment: {settings.environment}")
     ck = settings.consumer_key.strip()
-    cs = settings.consumer_secret.strip()
+    cs = consumer_secret.strip()
     frappe.logger().info(f"DEBUG: Consumer Key repr: {repr(ck)} len={len(ck)}")
     frappe.logger().info(f"DEBUG: Consumer Secret len={len(cs)} (not printing secret value)")
 
