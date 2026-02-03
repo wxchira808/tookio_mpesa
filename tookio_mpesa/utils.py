@@ -326,42 +326,36 @@ def format_phone_number(phone):
 def stk_callback():
     """Handle STK Push callback from Safaricom"""
     try:
-        # Get the callback data
         callback_data = json.loads(frappe.request.data)
         
-        frappe.logger().info(f"📞 STK Callback received: {json.dumps(callback_data, indent=2)}")
+        frappe.logger().info(f"STK Callback received: {json.dumps(callback_data, indent=2)}")
         
-        # Extract STK callback info
         stk_callback = callback_data.get("Body", {}).get("stkCallback", {})
         merchant_request_id = stk_callback.get("MerchantRequestID")
         checkout_request_id = stk_callback.get("CheckoutRequestID")
         result_code = stk_callback.get("ResultCode")
         result_desc = stk_callback.get("ResultDesc")
         
-        frappe.logger().info(f"🔍 Looking for transaction with CheckoutRequestID: {checkout_request_id}")
+        frappe.logger().info(f"Looking for transaction with CheckoutRequestID: {checkout_request_id}")
         
-        # Find the transaction using frappe.db.exists first
         if not frappe.db.exists("Mpesa Transaction", {"checkout_request_id": checkout_request_id}):
             frappe.log_error(f"Transaction not found for CheckoutRequestID: {checkout_request_id}", "STK Callback Error")
             return {"ResultCode": 1, "ResultDesc": "Transaction not found"}
         
-        # Get the transaction
         transaction = frappe.get_doc("Mpesa Transaction", {"checkout_request_id": checkout_request_id})
         
-        frappe.logger().info(f"✅ Found transaction: {transaction.name}")
+        frappe.logger().info(f"Found transaction: {transaction.name}")
         
-        # Update transaction based on result
         transaction.result_code = str(result_code)
         transaction.result_desc = result_desc
         transaction.callback_received_at = frappe.utils.now()
         transaction.callback_data = json.dumps(callback_data)
         
-        if int(result_code) == 0:  # Success
+        if int(result_code) == 0:
             transaction.status = "Success"
             
-            frappe.logger().info(f"💰 Payment successful for transaction {transaction.name}")
+            frappe.logger().info(f"Payment successful for transaction {transaction.name}")
             
-            # Extract callback metadata
             callback_metadata = stk_callback.get("CallbackMetadata", {}).get("Item", [])
             for item in callback_metadata:
                 name = item.get("Name")
@@ -369,13 +363,11 @@ def stk_callback():
                 
                 if name == "MpesaReceiptNumber":
                     transaction.mpesa_receipt_number = value
-                    frappe.logger().info(f"📋 Receipt Number: {value}")
+                    frappe.logger().info(f"Receipt Number: {value}")
                 elif name == "TransactionDate":
-                    # Convert M-Pesa date format to datetime
                     if value:
                         transaction.transaction_timestamp = datetime.strptime(str(value), "%Y%m%d%H%M%S")
             
-            # Check if this is a subscription payment and process upgrade
             if transaction.account_reference and "|" in transaction.account_reference:
                 try:
                     parts = transaction.account_reference.split("|")
@@ -383,32 +375,29 @@ def stk_callback():
                         user_subscription = parts[0]
                         new_subscription = parts[1]
                         
-                        frappe.logger().info(f"🎯 Processing subscription upgrade for {user_subscription} to {new_subscription}")
+                        frappe.logger().info(f"Processing subscription upgrade for {user_subscription} to {new_subscription}")
                         
-                        # Import the subscription processing function
                         from tookio_shop.api import process_subscription_upgrade
                         
-                        # Process the subscription upgrade
                         process_subscription_upgrade(user_subscription, new_subscription, transaction.name)
-                        frappe.logger().info(f"✅ Subscription upgrade processed successfully")
+                        frappe.logger().info(f"Subscription upgrade processed successfully")
                 except Exception as sub_error:
                     frappe.log_error(f"Failed to process subscription upgrade: {str(sub_error)}", "Subscription Upgrade Error")
-                    # Don't fail the callback, just log the error
         else:
             transaction.status = "Failed"
-            frappe.logger().info(f"❌ Payment failed for transaction {transaction.name}: {result_desc}")
+            frappe.logger().info(f"Payment failed for transaction {transaction.name}: {result_desc}")
         
-        # Save and commit
-        transaction.save(ignore_permissions=True)
+        frappe.set_user("Administrator")
+        transaction.flags.ignore_permissions = True
+        transaction.save()
         frappe.db.commit()
         
-        frappe.logger().info(f"💾 Transaction {transaction.name} updated to status: {transaction.status}")
+        frappe.logger().info(f"Transaction {transaction.name} updated to status: {transaction.status}")
         
-        # Return success response to Safaricom
         return {"ResultCode": 0, "ResultDesc": "Success"}
         
     except Exception as e:
-        frappe.logger().error(f"❌ STK Callback error: {str(e)}")
+        frappe.logger().error(f"STK Callback error: {str(e)}")
         frappe.log_error(f"STK Callback error: {str(e)}\n{frappe.get_traceback()}", "STK Callback Error")
         return {"ResultCode": 1, "ResultDesc": "Internal server error"}
 
@@ -643,9 +632,9 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
         "Timestamp": timestamp,
         "TransactionType": transaction_type,
         "Amount": int(float(amount)),
-        "PartyA": int(format_phone_number(phone_number).replace('+', '')),
+        "PartyA": format_phone_number(phone_number),
         "PartyB": party_b,
-        "PhoneNumber": int(format_phone_number(phone_number).replace('+', '')),
+        "PhoneNumber": format_phone_number(phone_number),
         "CallBackURL": callback_url,
         "AccountReference": account_reference,
         "TransactionDesc": transaction_desc
@@ -675,24 +664,22 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
                 error_code = error_data.get("errorCode", "")
                 error_message = error_data.get("errorMessage", "")
                 
-                # Check for "Merchant does not exist" error
                 if "Merchant does not exist" in error_message or error_code == "500.001.1001":
-                    error_msg = f"❌ WRONG BUSINESS SHORTCODE!\n\n"
+                    error_msg = f"WRONG BUSINESS SHORTCODE\n\n"
                     error_msg += f"Error: {error_message} (Code: {error_code})\n\n"
                     error_msg += f"The Business Shortcode '{business_short_code}' is NOT registered with your Daraja app.\n\n"
-                    error_msg += f"🔍 You have these numbers from Safaricom:\n"
+                    error_msg += f"You have these numbers from Safaricom:\n"
                     error_msg += f"   - Store Number: {settings.store_number or 'Not set'}\n"
                     error_msg += f"   - Till Number: {settings.till_number or 'Not set'}\n"
                     error_msg += f"   - Head Office Shortcode: {settings.head_office_shortcode or 'Not set'}\n\n"
-                    error_msg += f"📝 SOLUTION:\n"
+                    error_msg += f"SOLUTION:\n"
                     error_msg += f"1. Login to Daraja Portal: https://developer.safaricom.co.ke\n"
                     error_msg += f"2. Go to your PRODUCTION app\n"
                     error_msg += f"3. Find 'Lipa Na M-Pesa Online' section\n"
                     error_msg += f"4. Copy the EXACT Business Shortcode shown there\n"
                     error_msg += f"5. Update 'Store Number' in Tookio Mpesa Settings\n\n"
-                    error_msg += f"💡 TIP: For STK Push, you likely need to use HEAD OFFICE SHORTCODE ({settings.head_office_shortcode}),\n"
-                    error_msg += f"    NOT the Store Number or Till Number!\n\n"
-                    error_msg += f"See CHECK_DARAJA_SHORTCODE.md for detailed instructions."
+                    error_msg += f"TIP: For STK Push, you likely need to use HEAD OFFICE SHORTCODE ({settings.head_office_shortcode}),\n"
+                    error_msg += f"    NOT the Store Number or Till Number!"
                     
                     frappe.log_error("M-Pesa 500 Error - Wrong Shortcode", error_msg)
                     frappe.throw(
