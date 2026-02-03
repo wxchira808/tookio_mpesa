@@ -368,31 +368,32 @@ def stk_callback():
                 elif name == "TransactionDate":
                     if value:
                         transaction.transaction_timestamp = datetime.strptime(str(value), "%Y%m%d%H%M%S")
-            
-            if transaction.account_reference and "|" in transaction.account_reference:
-                try:
-                    parts = transaction.account_reference.split("|")
-                    if len(parts) == 2:
-                        user_subscription = parts[0]
-                        new_subscription = parts[1]
-                        
-                        frappe.logger().info(f"Processing subscription upgrade for {user_subscription} to {new_subscription}")
-                        
-                        from tookio_shop.api import process_subscription_upgrade
-                        
-                        process_subscription_upgrade(user_subscription, new_subscription, transaction.name)
-                        frappe.logger().info(f"Subscription upgrade processed successfully")
-                except Exception as sub_error:
-                    frappe.log_error(f"Failed to process subscription upgrade: {str(sub_error)}", "Subscription Upgrade Error")
         else:
             transaction.status = "Failed"
             frappe.logger().info(f"Payment failed for transaction {transaction.name}: {result_desc}")
         
-        transaction.flags.ignore_permissions = True
-        transaction.save()
+        # Save transaction first before processing subscription
+        transaction.save(ignore_permissions=True)
         frappe.db.commit()
         
         frappe.logger().info(f"Transaction {transaction.name} updated to status: {transaction.status}")
+        
+        # Process subscription upgrade after saving transaction
+        if int(result_code) == 0 and transaction.account_reference and "|" in transaction.account_reference:
+            try:
+                parts = transaction.account_reference.split("|")
+                if len(parts) == 2:
+                    user_subscription = parts[0]
+                    new_subscription = parts[1]
+                    
+                    frappe.logger().info(f"Processing subscription upgrade for {user_subscription} to {new_subscription}")
+                    
+                    from tookio_shop.api import process_subscription_upgrade
+                    
+                    process_subscription_upgrade(user_subscription, new_subscription, transaction.name)
+                    frappe.logger().info(f"Subscription upgrade processed successfully")
+            except Exception as sub_error:
+                frappe.log_error(f"Failed to process subscription upgrade: {str(sub_error)}", "Subscription Upgrade Error")
         
         return {"ResultCode": 0, "ResultDesc": "Success"}
         
