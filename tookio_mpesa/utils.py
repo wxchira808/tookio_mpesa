@@ -647,26 +647,59 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
         
         # Handle 500 Internal Server Error
         if response.status_code == 500:
-            error_msg = f"M-Pesa API returned 500 Internal Server Error. This usually indicates:\n"
-            error_msg += f"1. Invalid Business Shortcode for your credentials\n"
-            error_msg += f"2. Invalid Passkey\n"
-            error_msg += f"3. Shortcode not registered for STK Push\n\n"
-            error_msg += f"Current Settings:\n"
-            error_msg += f"- Environment: {settings.environment}\n"
-            error_msg += f"- Business Shortcode: {business_short_code}\n"
-            error_msg += f"- Callback URL: {callback_url}\n\n"
-            error_msg += f"Response: {response.text}\n\n"
-            error_msg += f"Please verify:\n"
-            error_msg += f"1. Your Business Shortcode matches your Daraja app\n"
-            error_msg += f"2. Your Passkey is correct (get from Daraja portal)\n"
-            error_msg += f"3. Your shortcode is registered for Lipa Na M-Pesa Online (STK Push)"
-            
-            frappe.log_error("M-Pesa 500 Error - Configuration Issue", error_msg)
-            frappe.throw(
-                "M-Pesa payment failed due to configuration error. "
-                "Please check Error Log for details. Common issues: Invalid shortcode, "
-                "invalid passkey, or shortcode not registered for STK Push."
-            )
+            try:
+                error_data = response.json()
+                error_code = error_data.get("errorCode", "")
+                error_message = error_data.get("errorMessage", "")
+                
+                # Check for "Merchant does not exist" error
+                if "Merchant does not exist" in error_message or error_code == "500.001.1001":
+                    error_msg = f"❌ WRONG BUSINESS SHORTCODE!\n\n"
+                    error_msg += f"Error: {error_message} (Code: {error_code})\n\n"
+                    error_msg += f"The Business Shortcode '{business_short_code}' is NOT registered with your Daraja app.\n\n"
+                    error_msg += f"🔍 You have these numbers from Safaricom:\n"
+                    error_msg += f"   - Store Number: {settings.store_number or 'Not set'}\n"
+                    error_msg += f"   - Till Number: {settings.till_number or 'Not set'}\n"
+                    error_msg += f"   - Head Office Shortcode: {settings.head_office_shortcode or 'Not set'}\n\n"
+                    error_msg += f"📝 SOLUTION:\n"
+                    error_msg += f"1. Login to Daraja Portal: https://developer.safaricom.co.ke\n"
+                    error_msg += f"2. Go to your PRODUCTION app\n"
+                    error_msg += f"3. Find 'Lipa Na M-Pesa Online' section\n"
+                    error_msg += f"4. Copy the EXACT Business Shortcode shown there\n"
+                    error_msg += f"5. Update 'Store Number' in Tookio Mpesa Settings\n\n"
+                    error_msg += f"💡 TIP: For STK Push, you likely need to use HEAD OFFICE SHORTCODE ({settings.head_office_shortcode}),\n"
+                    error_msg += f"    NOT the Store Number or Till Number!\n\n"
+                    error_msg += f"See CHECK_DARAJA_SHORTCODE.md for detailed instructions."
+                    
+                    frappe.log_error("M-Pesa 500 Error - Wrong Shortcode", error_msg)
+                    frappe.throw(
+                        f"Wrong Business Shortcode! '{business_short_code}' is not registered with your Daraja app. "
+                        f"Try using Head Office Shortcode ({settings.head_office_shortcode}) instead. "
+                        f"Check Error Log for detailed instructions."
+                    )
+                else:
+                    # Generic 500 error
+                    error_msg = f"M-Pesa API returned 500 Internal Server Error.\n\n"
+                    error_msg += f"Response: {response.text}\n\n"
+                    error_msg += f"Current Settings:\n"
+                    error_msg += f"- Environment: {settings.environment}\n"
+                    error_msg += f"- Business Shortcode: {business_short_code}\n"
+                    error_msg += f"- Callback URL: {callback_url}\n\n"
+                    error_msg += f"Common causes:\n"
+                    error_msg += f"1. Invalid Business Shortcode for your credentials\n"
+                    error_msg += f"2. Invalid Passkey\n"
+                    error_msg += f"3. Shortcode not registered for STK Push"
+                    
+                    frappe.log_error("M-Pesa 500 Error - Configuration Issue", error_msg)
+                    frappe.throw(
+                        "M-Pesa payment failed due to configuration error. "
+                        "Please check Error Log for details."
+                    )
+            except json.JSONDecodeError:
+                # Couldn't parse JSON response
+                error_msg = f"M-Pesa 500 Error - Response: {response.text}"
+                frappe.log_error("M-Pesa 500 Error", error_msg)
+                frappe.throw("M-Pesa payment failed. Please check Error Log.")
         
         # Handle specific HTTP error codes
         if response.status_code == 404:
