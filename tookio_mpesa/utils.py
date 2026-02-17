@@ -378,6 +378,13 @@ def stk_callback():
         
         frappe.logger().info(f"Transaction {transaction.name} updated to status: {transaction.status}")
         
+        # Update Sales Order payment status if this checkout was for an ecommerce order
+        if int(result_code) == 0:
+            try:
+                update_ecommerce_order_payment(checkout_request_id, transaction)
+            except Exception as order_error:
+                frappe.log_error(f"Failed to update ecommerce order: {str(order_error)}", "Ecommerce Order Update Error")
+        
         # Process subscription upgrade after saving transaction
         if int(result_code) == 0 and transaction.account_reference and "|" in transaction.account_reference:
             try:
@@ -782,3 +789,142 @@ def initiate_stk_push_for_till(phone_number, amount, account_reference, transact
     except requests.exceptions.RequestException as e:
         frappe.log_error(f"STK Push failed: {str(e)}")
         frappe.throw(f"STK Push failed: {str(e)}")
+
+
+def update_ecommerce_order_payment(checkout_request_id, transaction):
+    """Update ecommerce Sales Order payment status after successful M-Pesa payment"""
+    try:
+        # Find Sales Order linked to this checkout request
+        sales_order_name = frappe.db.get_value(
+            "Sales Order",
+            {"custom_mpesa_checkout_request_id": checkout_request_id},
+            "name"
+        )
+        
+        if not sales_order_name:
+            frappe.logger().info(f"No Sales Order found for checkout: {checkout_request_id}")
+            return
+        
+        sales_order = frappe.get_doc("Sales Order", sales_order_name)
+        
+        # Update payment status
+        sales_order.db_set("custom_payment_status", "Paid")
+        
+        frappe.logger().info(f"Updated Sales Order {sales_order_name} payment status to Paid")
+        
+        # Create Payment Entry if needed
+        try:
+            create_payment_entry_for_order(sales_order, transaction)
+        except Exception as pe_error:
+            frappe.log_error(f"Failed to create Payment Entry: {str(pe_error)}", "Payment Entry Error")
+        
+        # Create Sales Invoice if configured
+        try:
+            create_sales_invoice_for_order(sales_order, transaction)
+        except Exception as si_error:
+            frappe.log_error(f"Failed to create Sales Invoice: {str(si_error)}", "Sales Invoice Error")
+        
+        frappe.db.commit()
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update Ecommerce Order Error")
+
+
+def create_payment_entry_for_order(sales_order, transaction):
+    """Create a Payment Entry for the M-Pesa payment"""
+    # Check if payment entry already exists
+    existing_pe = frappe.db.exists("Payment Entry", {
+        "reference_doctype": "Sales Order",
+        "reference_name": sales_order.name
+    })
+    
+    if existing_pe:
+        frappe.logger().info(f"Payment Entry already exists for {sales_order.name}")
+        return
+    
+    # Get M-Pesa mode of payment
+    mode_of_payment = "M-Pesa"
+    
+    # Check if mode of payment exists
+    if not frappe.db.exists("Mode of Payment", mode_of_payment):
+        frappe.logger().warning(f"Mode of Payment '{mode_of_payment}' does not exist. Skipping Payment Entry creation.")
+        return
+    
+    # Get default account for this mode of payment
+    mop_account = frappe.db.get_value(
+        "Mode of Payment Account",
+        {"parent": mode_of_payment, "company": sales_order.company},
+        "default_account"
+    )
+    
+    if not mop_account:
+        frappe.logger().warning(f"No default account set for '{mode_of_payment}' in company '{sales_order.company}'")
+        return
+    
+    # Get receivable account
+    receivable_account = frappe.db.get_value(
+        "Company",
+        sales_order.company,
+        "default_receivable_account"
+    )
+    
+    if not receivable_account:
+        frappe.logger().warning(f"No default receivable account for company '{sales_order.company}'")
+        return
+    
+    pe = frappe.new_doc("Payment Entry")
+    pe.payment_type = "Receive"
+    pe.party_type = "Customer"
+    pe.party = sales_order.customer
+    pe.company = sales_order.company
+    pe.posting_date = frappe.utils.nowdate()
+    pe.mode_of_payment = mode_of_payment
+    pe.paid_from = receivable_account
+    pe.paid_to = mop_account
+    pe.paid_amount = float(transaction.amount)
+    pe.received_amount = float(transaction.amount)
+    pe.reference_no = transaction.mpesa_receipt_number or transaction.checkout_request_id
+    pe.reference_date = frappe.utils.nowdate()
+    pe.remarks = f"M-Pesa payment for {sales_order.name}. Receipt: {transaction.mpesa_receipt_number or 'N/A'}"
+    
+    pe.append("references", {
+        "reference_doctype": "Sales Order",
+        "reference_name": sales_order.name,
+        "allocated_amount": float(transaction.amount)
+    })
+    
+    pe.flags.ignore_permissions = True
+    pe.insert(ignore_permissions=True)
+    pe.submit()
+    
+    frappe.logger().info(f"Payment Entry {pe.name} created for {sales_order.name}")
+
+
+def create_sales_invoice_for_order(sales_order, transaction):
+    """Create a Sales Invoice from the Sales Order after payment"""
+    # Check if invoice already exists
+    existing_si = frappe.db.exists("Sales Invoice", {
+        "docstatus": 1,
+        "items": {"sales_order": sales_order.name}
+    })
+    
+    if existing_si:
+        frappe.logger().info(f"Sales Invoice already exists for {sales_order.name}")
+        return
+    
+    # Check if the Sales Order is submitted
+    if sales_order.docstatus != 1:
+        frappe.logger().info(f"Sales Order {sales_order.name} is not submitted yet")
+        return
+    
+    from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+    
+    try:
+        si = make_sales_invoice(sales_order.name)
+        si.flags.ignore_permissions = True
+        si.insert(ignore_permissions=True)
+        si.submit()
+        
+        frappe.logger().info(f"Sales Invoice {si.name} created for {sales_order.name}")
+    except Exception as e:
+        frappe.log_error(f"Could not create Sales Invoice: {str(e)}", "Sales Invoice Creation")
